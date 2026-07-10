@@ -1,4 +1,5 @@
 out/
+vulnerability.md
 node_modules/
 coverage/
 .DS_Store
