@@ -1,0 +1,19 @@
+{
+  "name": "riftdtl",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Go cross-shard settlement CTF with TypeScript integration tests.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/build.mjs --reuse-existing && node --test --experimental-strip-types \"tests/node/*.test.ts\"",
+    "ci": "bash scripts/ci.sh",
+    "loc": "node scripts/check-loc.mjs"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "prettier": "^3.8.3"
+  }
+}
