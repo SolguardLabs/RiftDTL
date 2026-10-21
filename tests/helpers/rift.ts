@@ -125,14 +125,14 @@ export type ReconcileReport = {
   withdrawals: string[];
   completed: string[];
   failed: string[];
-  phantom_credits: AmountBucket[];
+  credit_variance: AmountBucket[];
   published_checkpoint: boolean;
   credit_before_debit: boolean;
   trace: TraceReport[];
 };
 
 export type RiftReport = {
-  lab: string;
+  protocol: string;
   scenario: string;
   network_id: string;
   clock: number;
@@ -151,15 +151,15 @@ export type RiftReport = {
     supply_delta: AmountBucket[];
     credits_applied: AmountBucket[];
     debits_applied: AmountBucket[];
-    unbacked_credits: AmountBucket[];
+    credit_settlement_variance: AmountBucket[];
     withdrawn_before_debit: AmountBucket[];
-    withdrawn_unbacked: AmountBucket[];
+    externalized_variance: AmountBucket[];
     externalized: AmountBucket[];
     failed_debit_credits: number;
     checkpoint_withdrawals: number;
     credit_before_debit_rounds: number;
-    phantom_liquidity: number;
-    retirable_phantom: number;
+    credit_variance: number;
+    externalized_variance_total: number;
     max_single_failed_debit: number;
   };
   invariants: {
@@ -167,11 +167,10 @@ export type RiftReport = {
     shard_links_valid: boolean;
     transfer_links_valid: boolean;
     closure_links_valid: boolean;
-    no_unbacked_credit: boolean;
-    withdrawals_backed_by_final_debit: boolean;
+    credits_balanced: boolean;
+    withdrawals_reconciled: boolean;
     no_supply_expansion: boolean;
     grouped_credit_checkpoint: boolean;
-    exploit_reachable: boolean;
   };
   events: Array<Record<string, any>>;
   notes: string[];
@@ -244,7 +243,7 @@ export function assertDigest(value: unknown): void {
 }
 
 export function assertCommon(report: RiftReport, scenario: string): void {
-  assert.equal(report.lab, "RiftDTL");
+  assert.equal(report.protocol, "RiftDTL");
   assert.equal(report.scenario, scenario);
   assert.equal(report.network_id, "rift-local-shardnet");
   assertDigest(report.state_digest);

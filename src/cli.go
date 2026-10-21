@@ -45,6 +45,21 @@ func (c CLI) Run(args []string) int {
 			return 1
 		}
 		return 0
+	case "status":
+		if len(args) < 2 {
+			fmt.Fprintln(c.Stderr, "scenario name required")
+			return 1
+		}
+		run, err := RunScenario(args[1])
+		if err != nil {
+			fmt.Fprintln(c.Stderr, err.Error())
+			return 1
+		}
+		if err := WriteJSON(c.Stdout, BuildStatusReport(run)); err != nil {
+			fmt.Fprintln(c.Stderr, err.Error())
+			return 1
+		}
+		return 0
 	case "validate":
 		if len(args) < 2 {
 			fmt.Fprintln(c.Stderr, "scenario name required")
@@ -73,6 +88,7 @@ func (c CLI) usage() {
 		"riftdtl commands:",
 		"  --list",
 		"  scenario <name>",
+		"  status <name>",
 		"  validate <name>",
 	}
 	fmt.Fprintln(c.Stdout, strings.Join(lines, "\n"))

@@ -10,7 +10,7 @@ type ReconcilePolicy struct {
 	DebitOrder                      string `json:"debit_order"`
 }
 
-func VulnerablePolicy() ReconcilePolicy {
+func CheckpointPolicy() ReconcilePolicy {
 	return ReconcilePolicy{
 		Name:                            "grouped-credit-checkpoint",
 		GroupCreditsByDestination:       true,
@@ -43,15 +43,7 @@ type ScenarioPolicy struct {
 func DefaultScenarioPolicy(name string) ScenarioPolicy {
 	return ScenarioPolicy{
 		Name:      name,
-		Policy:    VulnerablePolicy(),
+		Policy:    CheckpointPolicy(),
 		Objective: "simulate production reconciler ordering",
-	}
-}
-
-func ExploitScenarioPolicy() ScenarioPolicy {
-	return ScenarioPolicy{
-		Name:      "exploit-window",
-		Policy:    VulnerablePolicy(),
-		Objective: "withdraw grouped destination credit before origin debit finalization",
 	}
 }

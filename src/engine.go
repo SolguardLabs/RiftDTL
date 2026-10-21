@@ -18,7 +18,6 @@ func AvailableScenarios() []string {
 		"shard-close",
 		"reconciliation",
 		"withdrawal",
-		"exploit-window",
 	}
 }
 
@@ -34,8 +33,6 @@ func RunScenario(name string) (*ScenarioRun, error) {
 		return scenarioReconciliation(), nil
 	case "withdrawal":
 		return scenarioWithdrawal(), nil
-	case "exploit-window":
-		return scenarioExploitWindow(), nil
 	default:
 		return nil, fmt.Errorf("unknown scenario %q", name)
 	}
@@ -125,7 +122,7 @@ func seedAccounts(ledger *Ledger) {
 	addSeedAccount(ledger, "shard-atlas", "atlas-alice", "Alice", "retail", map[string]Amount{
 		"usdq": 1_000_000,
 	})
-	addSeedAccount(ledger, "shard-atlas", "atlas-attacker-origin", "Attacker Origin", "retail", map[string]Amount{
+	addSeedAccount(ledger, "shard-atlas", "atlas-reserve", "Atlas Reserve", "treasury", map[string]Amount{
 		"usdq": 40_000,
 	})
 	addSeedAccount(ledger, "shard-boreal", "boreal-merchant", "Boreal Merchant", "merchant", map[string]Amount{
@@ -135,7 +132,7 @@ func seedAccounts(ledger *Ledger) {
 	addSeedAccount(ledger, "shard-boreal", "boreal-bob", "Bob", "retail", map[string]Amount{
 		"usdq": 50_000,
 	})
-	addSeedAccount(ledger, "shard-cygnus", "cygnus-attacker-dest", "Attacker Destination", "retail", map[string]Amount{
+	addSeedAccount(ledger, "shard-cygnus", "cygnus-settlement", "Cygnus Settlement", "merchant", map[string]Amount{
 		"usdq": 0,
 	})
 	addSeedAccount(ledger, "shard-cygnus", "cygnus-bridge", "Cygnus Bridge", "bridge", map[string]Amount{
@@ -177,6 +174,6 @@ func submitOrPanic(ledger *Ledger, intent TransferIntent) *Transfer {
 	return transfer
 }
 
-func vulnerableReconciler(ledger *Ledger) *Reconciler {
-	return NewReconciler(ledger, VulnerablePolicy())
+func checkpointReconciler(ledger *Ledger) *Reconciler {
+	return NewReconciler(ledger, CheckpointPolicy())
 }

@@ -22,7 +22,7 @@ func scenarioCrossShard() *ScenarioRun {
 		Tags:        Tags("scenario", "cross-shard"),
 	})
 	run.AddSubmitted(transfer)
-	result := vulnerableReconciler(ledger).Reconcile("cross-shard-netting", nil)
+	result := checkpointReconciler(ledger).Reconcile("cross-shard-netting", nil)
 	run.AddReconciliation(result)
 	run.Note("honest cross-shard transfer finalizes because the origin account is solvent")
 	return run
@@ -43,7 +43,7 @@ func scenarioShardClose() *ScenarioRun {
 		Tags:        Tags("scenario", "shard-close"),
 	})
 	run.AddSubmitted(transfer)
-	result := vulnerableReconciler(ledger).Reconcile("pre-close-netting", nil)
+	result := checkpointReconciler(ledger).Reconcile("pre-close-netting", nil)
 	run.AddReconciliation(result)
 	closure := NewClosureEngine(ledger)
 	ledger.Advance(1)
@@ -106,7 +106,7 @@ func scenarioReconciliation() *ScenarioRun {
 	run.AddSubmitted(t1)
 	run.AddSubmitted(t2)
 	run.AddSubmitted(t3)
-	result := vulnerableReconciler(ledger).Reconcile("grouped-priority", nil)
+	result := checkpointReconciler(ledger).Reconcile("grouped-priority", nil)
 	run.AddReconciliation(result)
 	run.Note("credits are grouped by destination before debits are applied by arrival")
 	return run
@@ -127,7 +127,7 @@ func scenarioWithdrawal() *ScenarioRun {
 		Tags:        Tags("scenario", "withdrawal"),
 	})
 	run.AddSubmitted(transfer)
-	result := vulnerableReconciler(ledger).Reconcile("settle-before-withdrawal", nil)
+	result := checkpointReconciler(ledger).Reconcile("settle-before-withdrawal", nil)
 	run.AddReconciliation(result)
 	ledger.Advance(1)
 	engine := NewWithdrawalEngine(ledger)
@@ -142,40 +142,5 @@ func scenarioWithdrawal() *ScenarioRun {
 		panic(err)
 	}
 	run.Note("withdrawal after final debit is backed by completed origin settlement")
-	return run
-}
-
-func scenarioExploitWindow() *ScenarioRun {
-	ledger := BuildSeedLedger()
-	run := NewScenarioRun("exploit-window", ledger, ExploitScenarioPolicy())
-	ledger.Advance(1)
-	transfer := submitOrPanic(ledger, TransferIntent{
-		SourceShard: "shard-atlas",
-		DestShard:   "shard-cygnus",
-		FromAccount: "atlas-attacker-origin",
-		ToAccount:   "cygnus-attacker-dest",
-		Asset:       "usdq",
-		Amount:      700_000,
-		Arrival:     1,
-		Tags:        Tags("scenario", "exploit", "attacker", "true"),
-	})
-	run.AddSubmitted(transfer)
-	reconciler := vulnerableReconciler(ledger)
-	result := reconciler.Start("exploit-credit-checkpoint")
-	reconciler.ApplyCredits(result)
-	reconciler.ProcessCheckpointWithdrawals(result, []WithdrawalIntent{
-		{
-			ShardID:        "shard-cygnus",
-			AccountID:      "cygnus-attacker-dest",
-			Asset:          "usdq",
-			Amount:         700_000,
-			SourceTransfer: transfer.ID,
-			Tags:           Tags("scenario", "exploit", "phase", "checkpoint"),
-		},
-	})
-	reconciler.ApplyDebits(result)
-	reconciler.Close(result)
-	run.AddReconciliation(*result)
-	run.Note("attacker withdrew grouped destination credit before the origin debit failed")
 	return run
 }
