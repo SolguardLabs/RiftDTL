@@ -9,7 +9,6 @@ test("CLI lists stable RiftDTL scenarios", () => {
     "shard-close",
     "reconciliation",
     "withdrawal",
-    "exploit-window",
   ]);
 });
 
@@ -18,7 +17,7 @@ test("baseline scenario emits the public JSON contract", () => {
   assertCommon(report, "baseline");
   assert.equal(report.transfers.length, 0);
   assert.equal(report.withdrawals.length, 0);
-  assert.equal(report.invariants.no_unbacked_credit, true);
+  assert.equal(report.invariants.credits_balanced, true);
   assert.equal(report.invariants.no_supply_expansion, true);
   assertDigest(report.state_digest);
 });

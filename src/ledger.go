@@ -3,7 +3,7 @@ package main
 import "fmt"
 
 type Ledger struct {
-	Lab           string            `json:"lab"`
+	Protocol      string            `json:"protocol"`
 	NetworkID     string            `json:"network_id"`
 	Clock         *Clock            `json:"-"`
 	Assets        *AssetStore       `json:"-"`
@@ -19,7 +19,7 @@ type Ledger struct {
 
 func NewLedger() *Ledger {
 	return &Ledger{
-		Lab:           "RiftDTL",
+		Protocol:      "RiftDTL",
 		NetworkID:     "rift-local-shardnet",
 		Clock:         NewClock(),
 		Assets:        NewAssetStore(),

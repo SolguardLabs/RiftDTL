@@ -1,20 +1,20 @@
 package main
 
 type TotalsReport struct {
-	OpeningSupply []AmountBucket `json:"opening_supply"`
-	Available     []AmountBucket `json:"available"`
-	Held          []AmountBucket `json:"held"`
-	PendingIn     []AmountBucket `json:"pending_in"`
-	PendingOut    []AmountBucket `json:"pending_out"`
-	Withdrawn     []AmountBucket `json:"withdrawn"`
-	Externalized  []AmountBucket `json:"externalized"`
-	Credits       []AmountBucket `json:"credits"`
-	Debits        []AmountBucket `json:"debits"`
-	Unbacked      []AmountBucket `json:"unbacked"`
+	OpeningSupply  []AmountBucket `json:"opening_supply"`
+	Available      []AmountBucket `json:"available"`
+	Held           []AmountBucket `json:"held"`
+	PendingIn      []AmountBucket `json:"pending_in"`
+	PendingOut     []AmountBucket `json:"pending_out"`
+	Withdrawn      []AmountBucket `json:"withdrawn"`
+	Externalized   []AmountBucket `json:"externalized"`
+	Credits        []AmountBucket `json:"credits"`
+	Debits         []AmountBucket `json:"debits"`
+	CreditVariance []AmountBucket `json:"credit_variance"`
 }
 
 type Report struct {
-	Lab                 string               `json:"lab"`
+	Protocol            string               `json:"protocol"`
 	Scenario            string               `json:"scenario"`
 	NetworkID           string               `json:"network_id"`
 	Clock               int64                `json:"clock"`
@@ -42,7 +42,7 @@ func BuildReport(run *ScenarioRun) Report {
 	notes := append([]string{}, ledger.Notes...)
 	notes = append(notes, run.Notes...)
 	return Report{
-		Lab:                 ledger.Lab,
+		Protocol:            ledger.Protocol,
 		Scenario:            run.Name,
 		NetworkID:           ledger.NetworkID,
 		Clock:               ledger.Clock.Snapshot(),
@@ -79,21 +79,21 @@ func buildTotals(ledger *Ledger, metrics RiskMetrics) TotalsReport {
 		externalized[asset] = ledger.Shards.TotalExternalized(asset)
 	}
 	return TotalsReport{
-		OpeningSupply: metrics.OpeningSupply,
-		Available:     BucketsFromMap(available),
-		Held:          BucketsFromMap(held),
-		PendingIn:     BucketsFromMap(pendingIn),
-		PendingOut:    BucketsFromMap(pendingOut),
-		Withdrawn:     BucketsFromMap(withdrawn),
-		Externalized:  BucketsFromMap(externalized),
-		Credits:       metrics.CreditsApplied,
-		Debits:        metrics.DebitsApplied,
-		Unbacked:      metrics.UnbackedCredits,
+		OpeningSupply:  metrics.OpeningSupply,
+		Available:      BucketsFromMap(available),
+		Held:           BucketsFromMap(held),
+		PendingIn:      BucketsFromMap(pendingIn),
+		PendingOut:     BucketsFromMap(pendingOut),
+		Withdrawn:      BucketsFromMap(withdrawn),
+		Externalized:   BucketsFromMap(externalized),
+		Credits:        metrics.CreditsApplied,
+		Debits:         metrics.DebitsApplied,
+		CreditVariance: metrics.CreditSettlementVariance,
 	}
 }
 
 func ValidateReport(report Report) bool {
-	return report.Lab == "RiftDTL" &&
+	return report.Protocol == "RiftDTL" &&
 		report.NetworkID == "rift-local-shardnet" &&
 		report.Scenario != "" &&
 		report.StateDigest != "" &&

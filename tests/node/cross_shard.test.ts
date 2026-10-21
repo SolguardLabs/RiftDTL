@@ -19,8 +19,8 @@ test("honest cross-shard transfer finalizes credit and debit", () => {
   assert.equal(bucket(merchant.available, "usdq"), 550_000);
   assert.equal(bucket(market.available, "usdq"), 5_700_000);
   assert.equal(bucket(report.risk.supply_delta, "usdq"), 0);
-  assert.equal(report.invariants.no_unbacked_credit, true);
-  assert.equal(report.invariants.withdrawals_backed_by_final_debit, true);
+  assert.equal(report.invariants.credits_balanced, true);
+  assert.equal(report.invariants.withdrawals_reconciled, true);
   assert.ok(events(report, "credit.applied").length >= 1);
   assert.ok(events(report, "debit.applied").length >= 1);
 });

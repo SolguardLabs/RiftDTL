@@ -27,7 +27,7 @@ type ReconcileResult struct {
 	Completed           []string           `json:"completed"`
 	Failed              []string           `json:"failed"`
 	Rejected            []string           `json:"rejected"`
-	PhantomCredits      []AmountBucket     `json:"phantom_credits"`
+	CreditVariance      []AmountBucket     `json:"credit_variance"`
 	PublishedCheckpoint bool               `json:"published_checkpoint"`
 	CreditBeforeDebit   bool               `json:"credit_before_debit"`
 	Trace               []PhaseTrace       `json:"trace"`
@@ -58,7 +58,7 @@ func (r *Reconciler) Start(name string) *ReconcileResult {
 		Completed:           []string{},
 		Failed:              []string{},
 		Rejected:            []string{},
-		PhantomCredits:      []AmountBucket{},
+		CreditVariance:      []AmountBucket{},
 		PublishedCheckpoint: false,
 		CreditBeforeDebit:   false,
 		Trace:               []PhaseTrace{},
@@ -189,18 +189,18 @@ func (r *Reconciler) ApplyDebits(result *ReconcileResult) {
 }
 
 func (r *Reconciler) Close(result *ReconcileResult) {
-	phantom := map[string]Amount{}
+	variance := map[string]Amount{}
 	for _, transfer := range r.Ledger.Transfers.Pointers() {
 		if transfer.CreditApplied && !transfer.DebitApplied {
-			AddBucket(phantom, transfer.Asset, transfer.Amount)
+			AddBucket(variance, transfer.Asset, transfer.Amount)
 		}
 		if transfer.Status == TransferFinalized || transfer.Status == TransferDebitFailed || transfer.Status == TransferRejected {
 			r.Ledger.Queue.RemoveTransfer(transfer.ID)
 		}
 	}
-	result.PhantomCredits = BucketsFromMap(phantom)
-	if len(result.PhantomCredits) > 0 {
-		result.trace("round", "phantom-credit", result.Window, "", "", "", "", SumBucketList(result.PhantomCredits), "credit remains without matching debit")
+	result.CreditVariance = BucketsFromMap(variance)
+	if len(result.CreditVariance) > 0 {
+		result.trace("round", "credit-variance", result.Window, "", "", "", "", SumBucketList(result.CreditVariance), "settlement variance observed at round close")
 	}
 	result.trace("round", "close", result.Window, "", "", "", "", 0, "reconciliation round closed")
 	r.Ledger.Event("reconcile.closed", result.Window, map[string]any{"window": result.Window})

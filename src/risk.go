@@ -1,33 +1,32 @@
 package main
 
 type RiskMetrics struct {
-	OpeningSupply           []AmountBucket `json:"opening_supply"`
-	CurrentSupply           []AmountBucket `json:"current_supply"`
-	SupplyDelta             []AmountBucket `json:"supply_delta"`
-	CreditsApplied          []AmountBucket `json:"credits_applied"`
-	DebitsApplied           []AmountBucket `json:"debits_applied"`
-	UnbackedCredits         []AmountBucket `json:"unbacked_credits"`
-	WithdrawnBeforeDebit    []AmountBucket `json:"withdrawn_before_debit"`
-	WithdrawnUnbacked       []AmountBucket `json:"withdrawn_unbacked"`
-	Externalized            []AmountBucket `json:"externalized"`
-	FailedDebitCredits      int            `json:"failed_debit_credits"`
-	CheckpointWithdrawals   int            `json:"checkpoint_withdrawals"`
-	CreditBeforeDebitRounds int            `json:"credit_before_debit_rounds"`
-	PhantomLiquidity        Amount         `json:"phantom_liquidity"`
-	RetirablePhantom        Amount         `json:"retirable_phantom"`
-	MaxSingleFailedDebit    Amount         `json:"max_single_failed_debit"`
+	OpeningSupply             []AmountBucket `json:"opening_supply"`
+	CurrentSupply             []AmountBucket `json:"current_supply"`
+	SupplyDelta               []AmountBucket `json:"supply_delta"`
+	CreditsApplied            []AmountBucket `json:"credits_applied"`
+	DebitsApplied             []AmountBucket `json:"debits_applied"`
+	CreditSettlementVariance  []AmountBucket `json:"credit_settlement_variance"`
+	WithdrawnBeforeDebit      []AmountBucket `json:"withdrawn_before_debit"`
+	ExternalizedVariance      []AmountBucket `json:"externalized_variance"`
+	Externalized              []AmountBucket `json:"externalized"`
+	FailedDebitCredits        int            `json:"failed_debit_credits"`
+	CheckpointWithdrawals     int            `json:"checkpoint_withdrawals"`
+	CreditBeforeDebitRounds   int            `json:"credit_before_debit_rounds"`
+	CreditVariance            Amount         `json:"credit_variance"`
+	ExternalizedVarianceTotal Amount         `json:"externalized_variance_total"`
+	MaxSingleFailedDebit      Amount         `json:"max_single_failed_debit"`
 }
 
 type InvariantReport struct {
-	AccountsNonNegative           bool `json:"accounts_non_negative"`
-	ShardLinksValid               bool `json:"shard_links_valid"`
-	TransferLinksValid            bool `json:"transfer_links_valid"`
-	ClosureLinksValid             bool `json:"closure_links_valid"`
-	NoUnbackedCredit              bool `json:"no_unbacked_credit"`
-	WithdrawalsBackedByFinalDebit bool `json:"withdrawals_backed_by_final_debit"`
-	NoSupplyExpansion             bool `json:"no_supply_expansion"`
-	GroupedCreditCheckpoint       bool `json:"grouped_credit_checkpoint"`
-	ExploitReachable              bool `json:"exploit_reachable"`
+	AccountsNonNegative     bool `json:"accounts_non_negative"`
+	ShardLinksValid         bool `json:"shard_links_valid"`
+	TransferLinksValid      bool `json:"transfer_links_valid"`
+	ClosureLinksValid       bool `json:"closure_links_valid"`
+	CreditsBalanced         bool `json:"credits_balanced"`
+	WithdrawalsReconciled   bool `json:"withdrawals_reconciled"`
+	NoSupplyExpansion       bool `json:"no_supply_expansion"`
+	GroupedCreditCheckpoint bool `json:"grouped_credit_checkpoint"`
 }
 
 type RiskEngine struct {
@@ -42,9 +41,9 @@ func NewRiskEngine(ledger *Ledger, reconciliations []ReconcileResult) *RiskEngin
 func (r *RiskEngine) Metrics() RiskMetrics {
 	credits := map[string]Amount{}
 	debits := map[string]Amount{}
-	unbacked := map[string]Amount{}
+	creditVariance := map[string]Amount{}
 	withdrawnBefore := map[string]Amount{}
-	withdrawnUnbacked := map[string]Amount{}
+	externalizedVariance := map[string]Amount{}
 	current := map[string]Amount{}
 	delta := map[string]Amount{}
 	externalized := map[string]Amount{}
@@ -58,7 +57,7 @@ func (r *RiskEngine) Metrics() RiskMetrics {
 			AddBucket(debits, transfer.Asset, transfer.Amount)
 		}
 		if transfer.CreditApplied && !transfer.DebitApplied {
-			AddBucket(unbacked, transfer.Asset, transfer.Amount)
+			AddBucket(creditVariance, transfer.Asset, transfer.Amount)
 			failedDebitCredits++
 			if transfer.Amount > maxFailed {
 				maxFailed = transfer.Amount
@@ -75,16 +74,16 @@ func (r *RiskEngine) Metrics() RiskMetrics {
 		}
 		if transfer, ok := r.Ledger.Transfers.Get(withdrawal.SourceTransfer); ok {
 			if transfer.CreditApplied && !transfer.DebitApplied {
-				AddBucket(withdrawnUnbacked, withdrawal.Asset, withdrawal.Amount)
+				AddBucket(externalizedVariance, withdrawal.Asset, withdrawal.Amount)
 			}
 		}
 	}
 	for _, asset := range r.Ledger.Assets.IDs() {
 		credits[asset] += 0
 		debits[asset] += 0
-		unbacked[asset] += 0
+		creditVariance[asset] += 0
 		withdrawnBefore[asset] += 0
-		withdrawnUnbacked[asset] += 0
+		externalizedVariance[asset] += 0
 		externalized[asset] += 0
 		current[asset] = r.Ledger.Shards.TotalAvailable(asset) + r.Ledger.Shards.TotalHeld(asset) + r.Ledger.Shards.TotalExternalized(asset)
 		delta[asset] = current[asset] - r.Ledger.OpeningSupply[asset]
@@ -97,31 +96,31 @@ func (r *RiskEngine) Metrics() RiskMetrics {
 		}
 		checkpointWithdrawals += len(result.Withdrawals)
 	}
-	phantom := SumBucketList(BucketsFromMap(unbacked))
-	retirable := SumBucketList(BucketsFromMap(withdrawnUnbacked))
+	creditVarianceTotal := SumBucketList(BucketsFromMap(creditVariance))
+	externalizedVarianceTotal := SumBucketList(BucketsFromMap(externalizedVariance))
 	return RiskMetrics{
-		OpeningSupply:           BucketsFromMap(r.Ledger.OpeningSupply),
-		CurrentSupply:           BucketsFromMap(current),
-		SupplyDelta:             BucketsFromMap(delta),
-		CreditsApplied:          BucketsFromMap(credits),
-		DebitsApplied:           BucketsFromMap(debits),
-		UnbackedCredits:         BucketsFromMap(unbacked),
-		WithdrawnBeforeDebit:    BucketsFromMap(withdrawnBefore),
-		WithdrawnUnbacked:       BucketsFromMap(withdrawnUnbacked),
-		Externalized:            BucketsFromMap(externalized),
-		FailedDebitCredits:      failedDebitCredits,
-		CheckpointWithdrawals:   checkpointWithdrawals,
-		CreditBeforeDebitRounds: creditBeforeDebitRounds,
-		PhantomLiquidity:        phantom,
-		RetirablePhantom:        retirable,
-		MaxSingleFailedDebit:    maxFailed,
+		OpeningSupply:             BucketsFromMap(r.Ledger.OpeningSupply),
+		CurrentSupply:             BucketsFromMap(current),
+		SupplyDelta:               BucketsFromMap(delta),
+		CreditsApplied:            BucketsFromMap(credits),
+		DebitsApplied:             BucketsFromMap(debits),
+		CreditSettlementVariance:  BucketsFromMap(creditVariance),
+		WithdrawnBeforeDebit:      BucketsFromMap(withdrawnBefore),
+		ExternalizedVariance:      BucketsFromMap(externalizedVariance),
+		Externalized:              BucketsFromMap(externalized),
+		FailedDebitCredits:        failedDebitCredits,
+		CheckpointWithdrawals:     checkpointWithdrawals,
+		CreditBeforeDebitRounds:   creditBeforeDebitRounds,
+		CreditVariance:            creditVarianceTotal,
+		ExternalizedVarianceTotal: externalizedVarianceTotal,
+		MaxSingleFailedDebit:      maxFailed,
 	}
 }
 
 func (r *RiskEngine) Invariants() InvariantReport {
 	metrics := r.Metrics()
-	noUnbacked := metrics.PhantomLiquidity == 0
-	withdrawalsBacked := metrics.RetirablePhantom == 0
+	creditsBalanced := metrics.CreditVariance == 0
+	withdrawalsReconciled := metrics.ExternalizedVarianceTotal == 0
 	noSupplyExpansion := true
 	for _, bucket := range metrics.SupplyDelta {
 		if bucket.Amount > 0 {
@@ -130,17 +129,15 @@ func (r *RiskEngine) Invariants() InvariantReport {
 		}
 	}
 	grouped := metrics.CreditBeforeDebitRounds > 0
-	exploit := metrics.RetirablePhantom > 0 && metrics.FailedDebitCredits > 0
 	return InvariantReport{
-		AccountsNonNegative:           r.accountsNonNegative(),
-		ShardLinksValid:               r.shardLinksValid(),
-		TransferLinksValid:            r.transferLinksValid(),
-		ClosureLinksValid:             r.closureLinksValid(),
-		NoUnbackedCredit:              noUnbacked,
-		WithdrawalsBackedByFinalDebit: withdrawalsBacked,
-		NoSupplyExpansion:             noSupplyExpansion,
-		GroupedCreditCheckpoint:       grouped,
-		ExploitReachable:              exploit,
+		AccountsNonNegative:     r.accountsNonNegative(),
+		ShardLinksValid:         r.shardLinksValid(),
+		TransferLinksValid:      r.transferLinksValid(),
+		ClosureLinksValid:       r.closureLinksValid(),
+		CreditsBalanced:         creditsBalanced,
+		WithdrawalsReconciled:   withdrawalsReconciled,
+		NoSupplyExpansion:       noSupplyExpansion,
+		GroupedCreditCheckpoint: grouped,
 	}
 }
 

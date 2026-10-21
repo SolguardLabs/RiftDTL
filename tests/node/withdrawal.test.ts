@@ -15,7 +15,7 @@ test("withdrawal after debit finalization is backed", () => {
   assert.equal(withdrawal.source_transfer, report.transfers[0].id);
   assert.equal(bucket(report.risk.externalized, "usdq"), 220_000);
   assert.equal(bucket(report.risk.withdrawn_before_debit, "usdq"), 0);
-  assert.equal(bucket(report.risk.withdrawn_unbacked, "usdq"), 0);
-  assert.equal(report.invariants.withdrawals_backed_by_final_debit, true);
+  assert.equal(bucket(report.risk.externalized_variance, "usdq"), 0);
+  assert.equal(report.invariants.withdrawals_reconciled, true);
   assert.ok(events(report, "withdrawal.finalized").length, "missing withdrawal event");
 });
